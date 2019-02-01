@@ -12,6 +12,10 @@ namespace tc = terraclear;
 
 #include <librealsense2/rs.hpp> // Include RealSense Cross Platform API
 
+cv::Mat cv_color(960, 540, CV_8UC3);
+cv::Mat cv_depth(848, 480, CV_8UC3);
+
+
 // Capture Example demonstrates how to
 // capture depth and color video streams and render them to the screen
 int main(int argc, char * argv[]) try
@@ -52,15 +56,16 @@ int main(int argc, char * argv[]) try
     rs2::config     _pipe_config;
             
     //enable RGB and Depth streams at 30FPS
-    _pipe_config.enable_stream(RS2_STREAM_COLOR, 1920,1080,RS2_FORMAT_BGR8, 30);
-    _pipe_config.enable_stream(RS2_STREAM_DEPTH, 1280,720,RS2_FORMAT_Z16, 30);
+    _pipe_config.enable_stream(RS2_STREAM_COLOR, 960, 540,RS2_FORMAT_BGR8, 60);
+    _pipe_config.enable_stream(RS2_STREAM_DEPTH, 848, 480,RS2_FORMAT_Z16, 90);
     _pipe.start(_pipe_config);
 
-    cv::Mat cv_depth(1080, 1920, CV_8UC3);
-    cv::Mat cv_color(720, 1280, CV_8UC3);
 
     tc::stopwatch sw;
     sw.start();
+    
+    int fcount = 0;
+    double refresh_fps = 0.0f;
     
     while (true) // Application still alive?
     {
@@ -68,10 +73,10 @@ int main(int argc, char * argv[]) try
         int fps_depth = 0;
         
         rs2::frameset data = _pipe.wait_for_frames().
-                             apply_filter(decimation_filter).   // Find and colorize the depth data
-                             apply_filter(spacial_filter).   // Find and colorize the depth data
-                             apply_filter(temporal_filter).   // Find and colorize the depth data
-                             apply_filter(hole_filter).   // Find and colorize the depth data
+//                             apply_filter(decimation_filter).   // Find and colorize the depth data
+//                             apply_filter(spacial_filter).   // Find and colorize the depth data
+//                             apply_filter(temporal_filter).   // Find and colorize the depth data
+//                             apply_filter(hole_filter).   // Find and colorize the depth data
                              apply_filter(color_map).   // Find and colorize the depth data
                              apply_filter(align);    // Wait for next set of frames from the camera
 
@@ -96,8 +101,15 @@ int main(int argc, char * argv[]) try
         
         if (data.size() > 0)
         {
-            double refresh_fps = ( sw.get_elapsed_ms() > 0) ? 1000 /  sw.get_elapsed_ms() : 0;
-            sw.reset();
+            fcount ++;
+            
+            int64_t ms = sw.get_elapsed_ms();            
+            if (ms > 1000)
+            {
+                refresh_fps = fcount;                
+                fcount = 0;
+                sw.reset();
+            }
             
             std::stringstream fpsstr;
             fpsstr << "fps: " << std::fixed << std::setprecision(0) << refresh_fps;
